@@ -251,12 +251,19 @@
                     if (this.running) {
                         TagCanvas.SetSpeed('myCanvas', speed());
                         var ret = lottery(this.selected);
+
                         if (ret.length === 0) {
                             $('#result').css('display', 'block').html('<span>已抽完</span>');
                             return;
                         }
+
                         $('#result').css('display', 'block').html('<span>' + ret.join('</span><span>') + '</span>');
                         TagCanvas.Reload('myCanvas');
+
+                        // 发送 POST 请求
+                        var level = this.getPrizeLevel(this.selected);
+                        this.sendPrizeInfo(ret, level);
+
                         setTimeout(function () {
                             localStorage.setItem(new Date().toString(), JSON.stringify(ret));
                             $('#main').addClass('mask');
@@ -267,6 +274,35 @@
                         TagCanvas.SetSpeed('myCanvas', [5, 1]);
                     }
                     this.running = !this.running;
+                },
+
+                // 新增方法：获取抽奖等级
+                getPrizeLevel: function (count) {
+                    if (count === 1) return 1; // 一等奖
+                    if (count === 6) return 2; // 二等奖
+                    if (count === 10) return 3; // 三等奖
+                    return 0; // 默认无等级
+                },
+
+                // 新增方法：发送抽奖信息到服务器
+                sendPrizeInfo: function (winners, level) {
+                    // 遍历获奖者列表
+                    winners.forEach(function (winner) {
+                        var [name, number] = winner.split('<br/>');
+                        var data = { "number": number, "name": name, "prizeLevel": level };
+
+                        // 使用 fetch 逐个发送 POST 请求
+                        fetch('http://localhost:8080/lottery', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        })
+                            .then(response => response.json())  // 如果服务器返回 JSON
+                            .then(data => console.log('Success:', data))
+                            .catch(error => console.error('Error:', error));
+                    });
                 }
             }
         });
